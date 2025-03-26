@@ -1,8 +1,6 @@
 #!/bin/bash
 
 # --- Configuration ---
-
-# Set the absolute path to adb.
 ADB_PATH="$HOME/Library/Android/sdk/platform-tools/adb"  # Replace with YOUR actual path
 
 which "$ADB_PATH" >/dev/null 2>&1
@@ -75,8 +73,16 @@ if [ -n "$connected_devices" ]; then
 
     # Use the selected device
     DEVICE_SERIAL="$chosen_device"
-    IP_ADDRESS=$(echo "$DEVICE_SERIAL" | awk -F: '{print $1}')
-    PORT=$(echo "$DEVICE_SERIAL" | awk -F: '{print $2}')
+    # Check if the device is connected via TCP/IP or USB
+    if [[ "$DEVICE_SERIAL" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}:[0-9]+$ ]]; then
+      IP_ADDRESS=$(echo "$DEVICE_SERIAL" | awk -F: '{print $1}')
+      PORT=$(echo "$DEVICE_SERIAL" | awk -F: '{print $2}')
+      echo "Device connected via TCP/IP: IP=$IP_ADDRESS, Port=$PORT"
+    else
+      echo "Device connected via USB"
+      IP_ADDRESS=""
+      PORT=""
+    fi
 
     # Debugging: Print the values of IP_ADDRESS, PORT, and DEVICE_SERIAL
     echo "IP_ADDRESS (Existing Device): [$IP_ADDRESS]"
@@ -89,16 +95,19 @@ else
 fi
 
 # --- Connect to the Device (if not already connected) ---
-echo "Connecting to $IP_ADDRESS:$PORT..."
-"$ADB_PATH" connect "$IP_ADDRESS:$PORT"
-connect_result=$?
-if [ $connect_result -ne 0 ]; then
-  echo "Failed to connect to $IP_ADDRESS:$PORT"
-  osascript -e 'display dialog "Failed to connect to $IP_ADDRESS:$PORT. Check the IP address, port, and ensure adb is running on the device." buttons {"OK"} default button "OK" with title "TNT - Android Tools" with icon caution'
-  exit 1
+# Only attempt to connect if the device is not connected via USB
+if [ -n "$IP_ADDRESS" ] && [ -n "$PORT" ]; then
+  echo "Connecting to $IP_ADDRESS:$PORT..."
+  "$ADB_PATH" connect "$IP_ADDRESS:$PORT"
+  connect_result=$?
+  if [ $connect_result -ne 0 ]; then
+    echo "Failed to connect to $IP_ADDRESS:$PORT"
+    osascript -e 'display dialog "Failed to connect to $IP_ADDRESS:$PORT. Check the IP address, port, and ensure adb is running on the device." buttons {"OK"} default button "OK" with title "TNT - Android Tools" with icon caution'
+    exit 1
+  fi
+  echo "Successfully connected to $IP_ADDRESS:$PORT"
+  osascript -e 'display dialog "Successfully connected to $IP_ADDRESS:$PORT" buttons {"OK"} default button "OK" with title "TNT - Android Tools" with icon note'
 fi
-echo "Successfully connected to $IP_ADDRESS:$PORT"
-osascript -e 'display dialog "Successfully connected to $IP_ADDRESS:$PORT" buttons {"OK"} default button "OK" with title "TNT - Android Tools" with icon note'
 
 # --- Check for adb ---
 if [ ! -x "$ADB_PATH" ]; then
@@ -123,10 +132,9 @@ case "$choice" in
   "Record")
     echo "Starting recording..."
     video_file="record_$(date +%Y%m%d_%H%M%S).mp4"
-    # Modified line:
     "$ADB_PATH" -s "$DEVICE_SERIAL" shell screenrecord /sdcard/"$video_file" &
     RECORD_PID=$!
-    sleep 2 # Give screenrecord time to initialize
+    sleep 5 # Increased initial sleep time
 
     record_options=("Stop Recording" "Cancel")
     record_choice=$(choose_from_list "Recording in progress. Choose an action:" "${record_options[@]}")
@@ -134,18 +142,23 @@ case "$choice" in
     case "$record_choice" in
       "Stop Recording")
         echo "Stopping recording..."
-        sleep 5 # Give it more time to finish
 
-        # Check if the video file exists on the device
-        if "$ADB_PATH" -s "$DEVICE_SERIAL" shell "test -f /sdcard/$video_file"; then
+        # Wait for the video file to be created (up to 30 seconds)
+        timeout=30
+        while [ ! "$("$ADB_PATH" -s "$DEVICE_SERIAL" shell "test -f /sdcard/$video_file; echo \$?")" -eq "0" ] && [ $timeout -gt 0 ]; do
+          echo "Waiting for video file to be created..."
+          sleep 2
+          timeout=$((timeout - 2))
+        done
+
+        if [ "$("$ADB_PATH" -s "$DEVICE_SERIAL" shell "test -f /sdcard/$video_file; echo \$?")" -eq "0" ]; then
           echo "Video file exists on the device. Proceeding with pull."
-          # Modified line:
           "$ADB_PATH" -s "$DEVICE_SERIAL" pull /sdcard/"$video_file" "$VIDEO_DIR"/"$video_file"
           "$ADB_PATH" -s "$DEVICE_SERIAL" shell rm /sdcard/"$video_file"
           echo "Video saved to: $VIDEO_DIR/$video_file"
           open "$VIDEO_DIR" # Changed to open folder
         else
-          echo "Error: Video file does not exist on the device! Recording may have failed."
+          echo "Error: Video file does not exist on the device after waiting! Recording may have failed."
           osascript -e 'display dialog "Error: Video recording failed on the device. Check device storage and permissions." buttons {"OK"} default button "OK" with title "TNT - Android Tools" with icon caution'
         fi
         ;;
