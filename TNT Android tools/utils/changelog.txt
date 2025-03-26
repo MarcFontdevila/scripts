@@ -1,0 +1,56 @@
+2.04
+- Fixed error handling when ADB is not already running on system
+- Changed the messaging on the log batch slightly
+
+2.03
+- Added much better error handling to most of the batch files
+- Removed the selection menu from the streaming and recording video batches (#3 and #8) since we always use the mono-zoomed option anyway.
+- Added the tag 'ExoPlayerImplInternal' to the log batch default log parameter
+- Added file system storage status and file tree information to the log batch.
+- Log batch now correctly passes the log arguments to the write_log batch.
+- Written log filenames now include the device name.
+- Reduced all timers from 10 to 5 seconds.
+
+2.02
+- Changed option 2 in Device Log to display AND write the log to the desktop
+- Added a good amount of device info to the top of the device log
+- Modified the 'Monoscopic - Zoom' option in video stream and recording apps (#3 and #8) to dynamically determine variables so it will work with headsets of any resolution. 
+
+2.0
+- The 'Stream headset video to PC' and 'Record headset video to Desktop (no sound)' batches now give an option for stereo, mono, or mono (zoomed) views.
+- 'Record headset video to Desktop (no sound)' now creates filenames with date/time format instead of using hard coded file that it overwrites.
+- Remade "ADB command prompt" app so it can pipe results to Windows features, e.g. 'adb shell pm list packages | findstr Sixense' will now work properly.
+- Changed the ADB server initializer section in all batches so that errors are visible to the user.
+
+1.9
+- Renamed batch filenames for better grouping and clarity.
+- Added graceful error handling on Wireless Connection batch.
+- Added custom ADB command prompt.
+- Added a choice to have the log write to disk.
+- Added screenshot batch file.
+- Combined video recording and retrieving into one batch.  After you record, it retrieves right away.
+- Added support to various batch files for the com.Sixense.WestPoint app.
+
+1.8
+-App IDs are no longer hard-coded in any batch file. They now look for 'Silver Surfer' and 'WorldTravler' strings within list of installed apps.
+-Uninstall, force-quit, 'Run...' and 'Launch..' batch windows close automatically after 10 seconds when finished.
+-Changed user-facing title from "Sixense - Android Tools" to "Sixense - Android VR Tools" in all batches.
+-Renamed some of the batches for clarity.
+
+1.7
+-Added "Stream headset video to PC.bat"
+
+1.6
+-Added new batch files for uninstalling and running World Traveler apps
+-Force-Stop command now stops any app with 'Sixense' in its package name.
+-Added option to run android system settings.
+
+1.5
+-Added new file:  "Oculus Quest - Change 'built-in video recorder' settings to record in widescreen.bat"
+-Added .\utils\adb initializer command to the front of every batch.  Cleans up appearance of batch when .\utils\adb is not initialized yet.
+-Removed all the pushd commands that aren't necessary.
+-Added CMD /K to "Display Device Error Log.bat" so that ctrl-c goes directly to the program and not the batch file itself.
+
+1.4
+-Changed Drag and Drop to work with APKs that have parenthesis.
+-Changed individual recording batch to have simpler quality setting.
